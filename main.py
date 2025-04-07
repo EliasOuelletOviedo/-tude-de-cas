@@ -37,7 +37,7 @@ class Poutre:
             plt.plot(x, M, label="Moment de torsion M(x)", color='blue')
             plt.show()
 
-        return np.max(np.abs(M))
+        return np.max(np.abs(M)), M
 
     def shear_graph(self, supports_reaction, forces, graph):
         x = np.linspace(0, self.L, 1000)
@@ -58,9 +58,9 @@ class Poutre:
             plt.show()
 
         max_V = np.max(np.abs(V))
-        max_M = self.moment_graph(V, x, graph)
+        max_M, M = self.moment_graph(V, x, graph)
 
-        return max_V, max_M
+        return max_V, max_M, M
     
     def torsion_graph(self, torsion, graph):
         x = np.linspace(0, self.L, 1000)
@@ -90,7 +90,7 @@ class Poutre:
 
         self.supports_reaction_x = np.linalg.solve(A_x, b_x)
 
-        self.max_V_x, self.max_M_x = self.shear_graph(self.supports_reaction_x, self.x_forces, graph)
+        self.max_V_x, self.max_M_x, M_x = self.shear_graph(self.supports_reaction_x, self.x_forces, graph)
 
         # Forces en y
         moment_y = 0
@@ -103,7 +103,15 @@ class Poutre:
 
         self.supports_reaction_y = np.linalg.solve(A_y, b_y)
 
-        self.max_V_y, self.max_M_y = self.shear_graph(self.supports_reaction_y, self.y_forces, graph)
+        self.max_V_y, self.max_M_y, M_y = self.shear_graph(self.supports_reaction_y, self.y_forces, graph)
+
+        M = np.sqrt(M_x**2 + M_y**2)
+
+        x = np.linspace(0, self.L, 1000)
+
+        plt.figure(figsize=(10, 5))
+        plt.plot(x, M, label="Torsion T(x)", color='blue')
+        plt.show()
 
         # Torsion
         self.max_T = self.torsion_graph(self.torsion, graph)
