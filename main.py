@@ -91,7 +91,7 @@ class Poutre:
         self.supports_reaction_z = np.linalg.solve(A_z, b_z)
 
         # self.max_V_z, self.max_M_z, M_z = self.shear_graph(self.supports_reaction_z, self.z_forces, graph)
-        self.V_z, self.M_z = self.shear_graph(self.supports_reaction_z, self.z_forces, self.z_loads)
+        self.V_z, self.M_y = self.shear_graph(self.supports_reaction_z, self.z_forces, self.z_loads)
 
         # Forces en y
         moment_y = 0
@@ -108,72 +108,55 @@ class Poutre:
         self.supports_reaction_y = np.linalg.solve(A_y, b_y)
 
         # self.max_V_y, self.max_M_y, M_y = self.shear_graph(self.supports_reaction_y, self.y_forces, graph)
-        self.V_y, self.M_y = self.shear_graph(self.supports_reaction_y, self.y_forces, self.y_loads)
+        self.V_y, self.M_z = self.shear_graph(self.supports_reaction_y, self.y_forces, self.y_loads)
 
         self.V = np.sqrt(self.V_z**2 + self.V_y**2)
-        self.theta_V = np.arctan2(self.V_z, self.V_y) * 180 / np.pi
+        self.theta_V = np.degrees(np.arctan2(self.V_z, self.V_y))
+        # self.theta_V[self.theta_V<0] = 0
         # self.theta_V[self.theta_V<0] += 360
         self.M = np.sqrt(self.M_z**2 + self.M_y**2)
-        self.theta_M = np.arctan2(self.M_z, self.M_y) * 180 / np.pi
-        # self.theta_V[self.theta_V<0] = 0
+        self.theta_M = np.degrees(np.arctan2(self.M_z, self.M_y))
+        self.theta_M[self.theta_M<0] = 0
+        # self.theta_M[self.theta_M<0] += 360
 
         fig, axs = plt.subplots(ncols=2, nrows=4, figsize=(16, 8),layout="constrained")
+
+        for ax in axs.flatten():
+            ax.axhline(0, color='gray', linewidth=1)
+            ax.axvline(0.35, color='gray', linewidth=1, linestyle='--')
+            ax.axvline(0.75, color='gray', linewidth=1, linestyle='--')
         
-        axs[0, 0].axhline(0, color='gray', linewidth=1)
-        axs[0, 0].axvline(0.35, color='gray', linewidth=1, linestyle='--')
-        axs[0, 0].axvline(0.75, color='gray', linewidth=1, linestyle='--')
         axs[0, 0].plot(self.x, self.V_z, label="V_z(x)", color='blue')
         axs[0, 0].tick_params(axis='x', labelbottom=False)
-        axs[0, 0].set_ylabel("Effort tranchant en z (N)")
+        axs[0, 0].set_ylabel(r"Effort tranchant en $z$ (N)")
 
-        axs[1, 0].axhline(0, color='gray', linewidth=1)
-        axs[1, 0].axvline(0.35, color='gray', linewidth=1, linestyle='--')
-        axs[1, 0].axvline(0.75, color='gray', linewidth=1, linestyle='--')
         axs[1, 0].plot(self.x, self.V_y, label="M_z(x)", color='blue')
         axs[1, 0].tick_params(axis='x', labelbottom=False)
-        axs[1, 0].set_ylabel("Effort tranchant en y (N)")
+        axs[1, 0].set_ylabel(r"Effort tranchant en $y$ (N)")
 
-        axs[2, 0].axhline(0, color='gray', linewidth=1)
-        axs[2, 0].axvline(0.35, color='gray', linewidth=1, linestyle='--')
-        axs[2, 0].axvline(0.75, color='gray', linewidth=1, linestyle='--')
         axs[2, 0].plot(self.x, self.V, label="V_y(x)", color='blue')
         axs[2, 0].tick_params(axis='x', labelbottom=False)
-        axs[2, 0].set_ylabel("Effort tranchant (N)")
+        axs[2, 0].set_ylabel(r"Effort tranchant (N)")
 
-        axs[3, 0].axhline(0, color='gray', linewidth=1)
-        axs[3, 0].axvline(0.35, color='gray', linewidth=1, linestyle='--')
-        axs[3, 0].axvline(0.75, color='gray', linewidth=1, linestyle='--')
         axs[3, 0].plot(self.x, self.theta_V, label="theta_V(x)", color='blue')
-        axs[3, 0].set_xlabel("Position x (m)")
-        axs[3, 0].set_ylabel("Angle de V(x) (°)")
+        axs[3, 0].set_xlabel(r"Position $x$ (m)")
+        axs[3, 0].set_ylabel(r"Angle de $V(x)$ (°)")
 
-        axs[0, 1].axhline(0, color='gray', linewidth=1)
-        axs[0, 1].axvline(0.35, color='gray', linewidth=1, linestyle='--')
-        axs[0, 1].axvline(0.75, color='gray', linewidth=1, linestyle='--')
         axs[0, 1].plot(self.x, self.M_z, label="M_z(x)", color='blue')
         axs[0, 1].tick_params(axis='x', labelbottom=False)
-        axs[0, 1].set_ylabel("Moment de flexion en z (Nm)")
+        axs[0, 1].set_ylabel(r"Moment de flexion en $z$ (N$\cdot$m)")
 
-        axs[1, 1].axhline(0, color='gray', linewidth=1)
-        axs[1, 1].axvline(0.35, color='gray', linewidth=1, linestyle='--')
-        axs[1, 1].axvline(0.75, color='gray', linewidth=1, linestyle='--')
         axs[1, 1].plot(self.x, self.M_y, label="M_y(x)", color='blue')
         axs[1, 1].tick_params(axis='x', labelbottom=False)
-        axs[1, 1].set_ylabel("Moment de flexion en y (Nm)")
+        axs[1, 1].set_ylabel(r"Moment de flexion en $y$ (N$\cdot$m)")
 
-        axs[2, 1].axhline(0, color='gray', linewidth=1)
-        axs[2, 1].axvline(0.35, color='gray', linewidth=1, linestyle='--')
-        axs[2, 1].axvline(0.75, color='gray', linewidth=1, linestyle='--')
         axs[2, 1].plot(self.x, self.M, label="M(x)", color='blue')
         axs[2, 1].tick_params(axis='x', labelbottom=False)
-        axs[2, 1].set_ylabel("Moment de flexion (Nm)")
+        axs[2, 1].set_ylabel(r"Moment de flexion (N$\cdot$m)")
 
-        axs[3, 1].axhline(0, color='gray', linewidth=1)
-        axs[3, 1].axvline(0.35, color='gray', linewidth=1, linestyle='--')
-        axs[3, 1].axvline(0.75, color='gray', linewidth=1, linestyle='--')
         axs[3, 1].plot(self.x, self.theta_M, label="theta_M(x)", color='blue')
-        axs[3, 1].set_xlabel("Position x (m)")
-        axs[3, 1].set_ylabel("Angle de M(x) (°)")
+        axs[3, 1].set_xlabel(r"Position $x$ (m)")
+        axs[3, 1].set_ylabel(r"Angle de $M(x)$ (°)")
 
         plt.show()
 
@@ -209,13 +192,16 @@ test = Poutre()
 
 test.L = 0.95
 
-# test.add_force(F_B, 0.75, 90)
-# test.add_force(F_C, 0.35)
-test.add_load(P_poutre, 0, 0.95)
-test.add_load(P_B, 0.75-e_gear/2, 0.75+e_gear/2)
-test.add_load(P_C, 0.35-e_gear/2, 0.35+e_gear/2)
-test.add_load(F_B, 0.75-e_gear/2, 0.75+e_gear/2, 90)
-test.add_load(F_C, 0.35-e_gear/2, 0.35+e_gear/2)
+test.add_force(F_B, 0.75, 90)
+test.add_force(F_C, 0.35)
+
+# Si on considère la largeur des engrenages et le poids de la poutre
+# test.add_load(P_poutre, 0, 0.95)
+# test.add_load(P_B, 0.75-e_gear/2, 0.75+e_gear/2)
+# test.add_load(P_C, 0.35-e_gear/2, 0.35+e_gear/2)
+# test.add_load(F_B, 0.75-e_gear/2, 0.75+e_gear/2, 90)
+# test.add_load(F_C, 0.35-e_gear/2, 0.35+e_gear/2)
+
 test.add_torsion(h_B*F_B, 0.2)
 test.add_torsion(-h_C*F_C, 0.6)
 
