@@ -16,22 +16,20 @@ class Poutre:
         self.N = N
         self.x, self.dx = np.linspace(0, self.L, self.N, retstep=True)
 
-        self.x_forces = {}
+        self.z_forces = {}
         self.y_forces = {}
-        self.x_loads = {}
+        self.z_loads = {}
         self.y_loads = {}
         self.torsion = {}
         self.supports = {0 : 0, 1: 0.95}
 
     def add_force(self, F, l, angle=0):
-        self.x_forces[l] = F*np.cos(np.deg2rad(angle))
+        self.z_forces[l] = F*np.cos(np.deg2rad(angle))
         self.y_forces[l] = F*np.sin(np.deg2rad(angle))
 
     def add_load(self, F, l_i, l_f, angle=0):
-        self.x_loads[(l_i, l_f)] = F*np.cos(np.deg2rad(angle))
+        self.z_loads[(l_i, l_f)] = F*np.cos(np.deg2rad(angle))
         self.y_loads[(l_i, l_f)] = F*np.sin(np.deg2rad(angle))
-        print(self.x_loads)
-        print(self.y_loads)
 
     def add_torsion(self, T, l):
         self.torsion[l] = T
@@ -39,18 +37,15 @@ class Poutre:
     def mod_support(self, i, l):
         self.supports[i] = l
 
-    def moment_graph(self, V, graph):
+    def moment_graph(self, V):
         M = np.cumsum(V) * self.dx
 
-        if graph:
-            plt.figure(figsize=(10, 5))
-            plt.plot(self.x, M, label="Moment de torsion M(x)", color='blue')
-            plt.show()
+        M[0] = 0
+        M[-1] = 0
 
-        # return np.max(np.abs(M)), M
         return M
 
-    def shear_graph(self, supports_reaction, forces, loads, graph):
+    def shear_graph(self, supports_reaction, forces, loads):
         V = np.zeros(self.N)
 
         V[idx(self.x, self.supports[0]):] += supports_reaction[0]
@@ -61,56 +56,42 @@ class Poutre:
 
         for l, F in loads.items():
             for x_0 in self.x[idx(self.x, l[0]):idx(self.x, l[1])]:
-                V[idx(self.x, x_0):] -= F / (l[1]-l[0]) *self.dx
+                V[idx(self.x, x_0):] -= F / (l[1]-l[0]) * self.dx
 
         V[0] = 0
         V[-1] = 0
 
-        if graph:
-            plt.figure(figsize=(10, 5))
-            plt.plot(self.x, V, label="Effort tranchant V(x)", color='blue')
-            plt.show()
+        M = self.moment_graph(V)
 
-        max_V = np.max(np.abs(V))
-        # max_M, M = self.moment_graph(V, graph)
-        M = self.moment_graph(V, graph)
-
-        # return max_V, V, max_M, M
         return V, M
     
-    def torsion_graph(self, torsion, graph):
+    def torsion_graph(self, torsion):
         T = np.zeros(self.N)
 
         for pos, t in torsion.items():
             T[idx(self.x, pos):] += t
 
-        if graph:
-            plt.figure(figsize=(10, 5))
-            plt.plot(self.x, T, label="Torsion T(x)", color='blue')
-            plt.show()
-
-        # return np.max(np.abs(T))
         return T
 
     def solve(self, graph = False):
         pos = self.supports[1] - self.supports[0]
 
         # Forces en x
-        moment_x = 0
+        moment_z = 0
 
-        for l, F in self.x_forces.items():
-                moment_x += F * (l - self.supports[0])
+        for l, F in self.z_forces.items():
+                moment_z += F * (l - self.supports[0])
 
-        for l, F in self.x_loads.items():
-                moment_x += F * ((l[0]+l[1])/2 - self.supports[0])
+        for l, F in self.z_loads.items():
+                moment_z += F * ((l[0]+l[1])/2 - self.supports[0])
 
-        A_x = np.array([[1, 1], [0, pos]])
-        b_x = np.array([sum(self.x_forces.values()) + sum(self.x_loads.values()), moment_x])
+        A_z = np.array([[1, 1], [0, pos]])
+        b_z = np.array([sum(self.z_forces.values()) + sum(self.z_loads.values()), moment_z])
 
-        self.supports_reaction_x = np.linalg.solve(A_x, b_x)
+        self.supports_reaction_z = np.linalg.solve(A_z, b_z)
 
-        # self.max_V_x, self.max_M_x, M_x = self.shear_graph(self.supports_reaction_x, self.x_forces, graph)
-        self.V_x, self.M_x = self.shear_graph(self.supports_reaction_x, self.x_forces, self.x_loads, graph)
+        # self.max_V_z, self.max_M_z, M_z = self.shear_graph(self.supports_reaction_z, self.z_forces, graph)
+        self.V_z, self.M_z = self.shear_graph(self.supports_reaction_z, self.z_forces, self.z_loads)
 
         # Forces en y
         moment_y = 0
@@ -127,24 +108,64 @@ class Poutre:
         self.supports_reaction_y = np.linalg.solve(A_y, b_y)
 
         # self.max_V_y, self.max_M_y, M_y = self.shear_graph(self.supports_reaction_y, self.y_forces, graph)
-        self.V_y, self.M_y = self.shear_graph(self.supports_reaction_y, self.y_forces, self.y_loads, graph)
+        self.V_y, self.M_y = self.shear_graph(self.supports_reaction_y, self.y_forces, self.y_loads)
 
-        self.V = np.sqrt(self.V_x**2 + self.V_y**2)
-        self.M = np.sqrt(self.M_x**2 + self.M_y**2)
+        self.V = np.sqrt(self.V_z**2 + self.V_y**2)
+        self.theta_V = np.arctan2(self.V_y, self.V_z) * 180 / np.pi
+        self.theta_V[self.theta_V<0] += 360
+        self.M = np.sqrt(self.M_z**2 + self.M_y**2)
+        self.theta_M = np.arctan2(self.M_y, self.M_z) * 180 / np.pi
+        self.theta_V[self.theta_V<0] = 0
 
-        plt.figure(figsize=(10, 5))
-        plt.plot(self.x, self.V, label="Torsion T(x)", color='blue')
-        plt.show()
+        fig, axs = plt.subplots(ncols=2, nrows=4, figsize=(16, 8),layout="constrained")
+        
+        axs[0, 0].axhline(y=0, color='gray', linewidth=1)
+        axs[0, 0].plot(self.x, self.V_z, label="V_z(x)", color='blue')
+        axs[0, 0].tick_params(axis='x', labelbottom=False)
+        axs[0, 0].set_ylabel("Effort tranchant en z (N)")
 
-        plt.figure(figsize=(10, 5))
-        plt.plot(self.x, self.M, label="Torsion T(x)", color='blue')
+        axs[1, 0].axhline(y=0, color='gray', linewidth=1)
+        axs[1, 0].plot(self.x, self.V_y, label="M_z(x)", color='blue')
+        axs[1, 0].tick_params(axis='x', labelbottom=False)
+        axs[1, 0].set_ylabel("Effort tranchant en y (N)")
+
+        axs[2, 0].axhline(y=0, color='gray', linewidth=1)
+        axs[2, 0].plot(self.x, self.V, label="V_y(x)", color='blue')
+        axs[2, 0].tick_params(axis='x', labelbottom=False)
+        axs[2, 0].set_ylabel("Effort tranchant (N)")
+
+        axs[3, 0].axhline(y=0, color='gray', linewidth=1)
+        axs[3, 0].plot(self.x, self.theta_V, label="theta_V(x)", color='blue')
+        axs[3, 0].set_xlabel("Position x (m)")
+        axs[3, 0].set_ylabel("Angle de V(x) (°)")
+
+        axs[0, 1].axhline(y=0, color='gray', linewidth=1)
+        axs[0, 1].plot(self.x, self.M_z, label="M_z(x)", color='blue')
+        axs[0, 1].tick_params(axis='x', labelbottom=False)
+        axs[0, 1].set_ylabel("Moment de flexion en z (Nm)")
+
+        axs[1, 1].axhline(y=0, color='gray', linewidth=1)
+        axs[1, 1].plot(self.x, self.M_y, label="M_y(x)", color='blue')
+        axs[1, 1].tick_params(axis='x', labelbottom=False)
+        axs[1, 1].set_ylabel("Moment de flexion en z (Nm)")
+
+        axs[2, 1].axhline(y=0, color='gray', linewidth=1)
+        axs[2, 1].plot(self.x, self.M, label="M(x)", color='blue')
+        axs[2, 1].tick_params(axis='x', labelbottom=False)
+        axs[2, 1].set_ylabel("Moment de flexion (Nm)")
+
+        axs[3, 1].axhline(y=0, color='gray', linewidth=1)
+        axs[3, 1].plot(self.x, self.theta_M, label="theta_M(x)", color='blue')
+        axs[3, 1].set_xlabel("Position x (m)")
+        axs[3, 1].set_ylabel("Angle de M(x) (°)")
+
         plt.show()
 
         # Torsion
-        self.max_T = self.torsion_graph(self.torsion, False)
+        self.max_T = self.torsion_graph(self.torsion)
 
-        # return self.max_V_x, self.max_M_x, self.max_V_y, self.max_M_y, self.max_T
-        return self.V, self.M, self.max_T
+        # return self.max_V_z, self.max_M_z, self.max_V_y, self.max_M_y, self.max_T
+        return np.max(self.V), np.max(self.M), np.max(self.max_T)
 
 h_B = 0.05
 h_C = 0.075
@@ -157,14 +178,16 @@ test = Poutre()
 
 test.L = 0.95
 
-test.add_force(F_B, 0.2)
-test.add_force(F_C, 0.6, 90)
+# test.add_force(F_B, 0.2)
+# test.add_force(F_C, 0.6, 90)
 test.add_load(51.71, 0, 0.95, 90)
 test.add_load(17.61, 0.2-0.032/2, 0.2+0.032/2, 90)
 test.add_load(41.41, 0.6-0.032/2, 0.6+0.032/2, 90)
+test.add_load(F_B, 0.2-0.032/2, 0.2+0.032/2)
+test.add_load(F_C, 0.6-0.032/2, 0.6+0.032/2, 90)
 # test.add_load(1000, 0.3, 0.5, 90)
 test.add_torsion(h_B*F_B, 0.2)
 test.add_torsion(-h_C*F_C, 0.6)
 
-test.solve(graph = True)
-# print(test.solve(graph = True))
+# test.solve(graph = True)
+print(test.solve(graph = True))
