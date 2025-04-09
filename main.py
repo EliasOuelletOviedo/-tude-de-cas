@@ -111,50 +111,66 @@ class Poutre:
         self.V_y, self.M_y = self.shear_graph(self.supports_reaction_y, self.y_forces, self.y_loads)
 
         self.V = np.sqrt(self.V_z**2 + self.V_y**2)
-        self.theta_V = np.arctan2(self.V_y, self.V_z) * 180 / np.pi
-        self.theta_V[self.theta_V<0] += 360
+        self.theta_V = np.arctan2(self.V_z, self.V_y) * 180 / np.pi
+        # self.theta_V[self.theta_V<0] += 360
         self.M = np.sqrt(self.M_z**2 + self.M_y**2)
-        self.theta_M = np.arctan2(self.M_y, self.M_z) * 180 / np.pi
-        self.theta_V[self.theta_V<0] = 0
+        self.theta_M = np.arctan2(self.M_z, self.M_y) * 180 / np.pi
+        # self.theta_V[self.theta_V<0] = 0
 
         fig, axs = plt.subplots(ncols=2, nrows=4, figsize=(16, 8),layout="constrained")
         
-        axs[0, 0].axhline(y=0, color='gray', linewidth=1)
+        axs[0, 0].axhline(0, color='gray', linewidth=1)
+        axs[0, 0].axvline(0.35, color='gray', linewidth=1, linestyle='--')
+        axs[0, 0].axvline(0.75, color='gray', linewidth=1, linestyle='--')
         axs[0, 0].plot(self.x, self.V_z, label="V_z(x)", color='blue')
         axs[0, 0].tick_params(axis='x', labelbottom=False)
         axs[0, 0].set_ylabel("Effort tranchant en z (N)")
 
-        axs[1, 0].axhline(y=0, color='gray', linewidth=1)
+        axs[1, 0].axhline(0, color='gray', linewidth=1)
+        axs[1, 0].axvline(0.35, color='gray', linewidth=1, linestyle='--')
+        axs[1, 0].axvline(0.75, color='gray', linewidth=1, linestyle='--')
         axs[1, 0].plot(self.x, self.V_y, label="M_z(x)", color='blue')
         axs[1, 0].tick_params(axis='x', labelbottom=False)
         axs[1, 0].set_ylabel("Effort tranchant en y (N)")
 
-        axs[2, 0].axhline(y=0, color='gray', linewidth=1)
+        axs[2, 0].axhline(0, color='gray', linewidth=1)
+        axs[2, 0].axvline(0.35, color='gray', linewidth=1, linestyle='--')
+        axs[2, 0].axvline(0.75, color='gray', linewidth=1, linestyle='--')
         axs[2, 0].plot(self.x, self.V, label="V_y(x)", color='blue')
         axs[2, 0].tick_params(axis='x', labelbottom=False)
         axs[2, 0].set_ylabel("Effort tranchant (N)")
 
-        axs[3, 0].axhline(y=0, color='gray', linewidth=1)
+        axs[3, 0].axhline(0, color='gray', linewidth=1)
+        axs[3, 0].axvline(0.35, color='gray', linewidth=1, linestyle='--')
+        axs[3, 0].axvline(0.75, color='gray', linewidth=1, linestyle='--')
         axs[3, 0].plot(self.x, self.theta_V, label="theta_V(x)", color='blue')
         axs[3, 0].set_xlabel("Position x (m)")
         axs[3, 0].set_ylabel("Angle de V(x) (°)")
 
-        axs[0, 1].axhline(y=0, color='gray', linewidth=1)
+        axs[0, 1].axhline(0, color='gray', linewidth=1)
+        axs[0, 1].axvline(0.35, color='gray', linewidth=1, linestyle='--')
+        axs[0, 1].axvline(0.75, color='gray', linewidth=1, linestyle='--')
         axs[0, 1].plot(self.x, self.M_z, label="M_z(x)", color='blue')
         axs[0, 1].tick_params(axis='x', labelbottom=False)
         axs[0, 1].set_ylabel("Moment de flexion en z (Nm)")
 
-        axs[1, 1].axhline(y=0, color='gray', linewidth=1)
+        axs[1, 1].axhline(0, color='gray', linewidth=1)
+        axs[1, 1].axvline(0.35, color='gray', linewidth=1, linestyle='--')
+        axs[1, 1].axvline(0.75, color='gray', linewidth=1, linestyle='--')
         axs[1, 1].plot(self.x, self.M_y, label="M_y(x)", color='blue')
         axs[1, 1].tick_params(axis='x', labelbottom=False)
-        axs[1, 1].set_ylabel("Moment de flexion en z (Nm)")
+        axs[1, 1].set_ylabel("Moment de flexion en y (Nm)")
 
-        axs[2, 1].axhline(y=0, color='gray', linewidth=1)
+        axs[2, 1].axhline(0, color='gray', linewidth=1)
+        axs[2, 1].axvline(0.35, color='gray', linewidth=1, linestyle='--')
+        axs[2, 1].axvline(0.75, color='gray', linewidth=1, linestyle='--')
         axs[2, 1].plot(self.x, self.M, label="M(x)", color='blue')
         axs[2, 1].tick_params(axis='x', labelbottom=False)
         axs[2, 1].set_ylabel("Moment de flexion (Nm)")
 
-        axs[3, 1].axhline(y=0, color='gray', linewidth=1)
+        axs[3, 1].axhline(0, color='gray', linewidth=1)
+        axs[3, 1].axvline(0.35, color='gray', linewidth=1, linestyle='--')
+        axs[3, 1].axvline(0.75, color='gray', linewidth=1, linestyle='--')
         axs[3, 1].plot(self.x, self.theta_M, label="theta_M(x)", color='blue')
         axs[3, 1].set_xlabel("Position x (m)")
         axs[3, 1].set_ylabel("Angle de M(x) (°)")
@@ -167,25 +183,39 @@ class Poutre:
         # return self.max_V_z, self.max_M_z, self.max_V_y, self.max_M_y, self.max_T
         return np.max(self.V), np.max(self.M), np.max(self.max_T)
 
+P = 8500
+rpm = 541
+T = P / (2 * np.pi * rpm / 60)
+
+h_poutre = 0.03
+L_poutre = 0.95
+
+e_gear = 0.032
 h_B = 0.05
 h_C = 0.075
-F_B = 3000
-F_C = h_B/h_C*F_B
+F_B = T/h_B
+F_C = T/h_C
 
-print(F_C)
+rho = 7850
+
+P_poutre = 7850*np.pi*h_poutre**2*L_poutre
+P_B = 7850*np.pi*h_B**2*e_gear
+P_C = 7850*np.pi*h_C**2*e_gear
+
+# print(P_B, P_C, P_poutre)
+# print(F_B, F_C)
 
 test = Poutre()
 
 test.L = 0.95
 
-# test.add_force(F_B, 0.2)
-# test.add_force(F_C, 0.6, 90)
-test.add_load(51.71, 0, 0.95, 90)
-test.add_load(17.61, 0.2-0.032/2, 0.2+0.032/2, 90)
-test.add_load(41.41, 0.6-0.032/2, 0.6+0.032/2, 90)
-test.add_load(F_B, 0.2-0.032/2, 0.2+0.032/2)
-test.add_load(F_C, 0.6-0.032/2, 0.6+0.032/2, 90)
-# test.add_load(1000, 0.3, 0.5, 90)
+# test.add_force(F_B, 0.75, 90)
+# test.add_force(F_C, 0.35)
+test.add_load(P_poutre, 0, 0.95)
+test.add_load(P_B, 0.75-e_gear/2, 0.75+e_gear/2)
+test.add_load(P_C, 0.35-e_gear/2, 0.35+e_gear/2)
+test.add_load(F_B, 0.75-e_gear/2, 0.75+e_gear/2, 90)
+test.add_load(F_C, 0.35-e_gear/2, 0.35+e_gear/2)
 test.add_torsion(h_B*F_B, 0.2)
 test.add_torsion(-h_C*F_C, 0.6)
 
