@@ -180,13 +180,13 @@ class Poutre:
         # self.M_z = -self.M_z
 
         self.V = np.sqrt(self.V_z**2 + self.V_y**2)
-        self.theta_V = np.degrees(np.arctan2(self.V_z, self.V_y))
+        self.theta_V = np.degrees(np.arctan2(self.V_y, self.V_z))
         self.V_max = np.max(self.V)
         self.theta_V_max = self.theta_V[idx(self.V, self.V_max)]
         # self.theta_V[self.theta_V<0] = 0
         # self.theta_V[self.theta_V<0] += 360
         self.M = np.sqrt(self.M_z**2 + self.M_y**2)
-        self.theta_M = np.degrees(np.arctan2(self.M_z, self.M_y))
+        self.theta_M = np.degrees(np.arctan2(self.M_y, self.M_z))
         self.M_max = np.max(self.M)
         self.theta_M_max = self.theta_M[idx(self.M, self.M_max)]
         # self.theta_M[self.theta_M<0] = 0
