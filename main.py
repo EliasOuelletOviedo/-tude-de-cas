@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import colormaps
 
 def idx(array, value):
     array = np.asarray(array)
@@ -10,8 +11,12 @@ class Poutre:
     def __init__(self, N=10000):
         self.E = 205e9  # Young's modulus in Pa
         self.G = 80e9   # Shear modulus in Pa
-        self.d = 0.3    # Diameter in m
+        self.d = 0.03    # Diameter in m
         self.L = 0.95   # Length in m
+
+        self.I = np.pi * self.d**4 / 64  # Moment of inertia in m^4
+        self.J = np.pi * self.d**4 / 32
+        self.A = np.pi * self.d**2 / 4  # Cross-sectional area in m^2
 
         self.N = N
         self.x, self.dx = np.linspace(0, self.L, self.N, retstep=True)
@@ -21,6 +26,7 @@ class Poutre:
         self.z_loads = {}
         self.y_loads = {}
         self.torsion = {}
+        self.t_loads = {}
         self.supports = {0 : 0, 1: 0.95}
 
     def add_force(self, F, l, angle=0):
@@ -33,6 +39,9 @@ class Poutre:
 
     def add_torsion(self, T, l):
         self.torsion[l] = T
+
+    def add_torsion_load(self, T, l_i, l_f):
+        self.t_loads[(l_i, l_f)] = T
 
     def mod_support(self, i, l):
         self.supports[i] = l
@@ -71,54 +80,13 @@ class Poutre:
         for pos, t in torsion.items():
             T[idx(self.x, pos):] += t
 
+        for l, t in self.t_loads.items():
+            for x_0 in self.x[idx(self.x, l[0]):idx(self.x, l[1])]:
+                T[idx(self.x, x_0):] += t / (l[1]-l[0]) * self.dx
+
         return T
-
-    def solve(self, graph = False):
-        pos = self.supports[1] - self.supports[0]
-
-        # Forces en x
-        moment_z = 0
-
-        for l, F in self.z_forces.items():
-                moment_z += F * (l - self.supports[0])
-
-        for l, F in self.z_loads.items():
-                moment_z += F * ((l[0]+l[1])/2 - self.supports[0])
-
-        A_z = np.array([[1, 1], [0, pos]])
-        b_z = np.array([sum(self.z_forces.values()) + sum(self.z_loads.values()), moment_z])
-
-        self.supports_reaction_z = np.linalg.solve(A_z, b_z)
-
-        # self.max_V_z, self.max_M_z, M_z = self.shear_graph(self.supports_reaction_z, self.z_forces, graph)
-        self.V_z, self.M_y = self.shear_graph(self.supports_reaction_z, self.z_forces, self.z_loads)
-
-        # Forces en y
-        moment_y = 0
-
-        for l, F in self.y_forces.items():
-                moment_y += F * (l - self.supports[0])
-
-        for l, F in self.y_loads.items():
-                moment_y += F * ((l[0]+l[1])/2 - self.supports[0])
-
-        A_y = np.array([[1, 1], [0, pos]])
-        b_y = np.array([sum(self.y_forces.values()) + sum(self.y_loads.values()), moment_y])
-
-        self.supports_reaction_y = np.linalg.solve(A_y, b_y)
-
-        # self.max_V_y, self.max_M_y, M_y = self.shear_graph(self.supports_reaction_y, self.y_forces, graph)
-        self.V_y, self.M_z = self.shear_graph(self.supports_reaction_y, self.y_forces, self.y_loads)
-
-        self.V = np.sqrt(self.V_z**2 + self.V_y**2)
-        self.theta_V = np.degrees(np.arctan2(self.V_z, self.V_y))
-        # self.theta_V[self.theta_V<0] = 0
-        # self.theta_V[self.theta_V<0] += 360
-        self.M = np.sqrt(self.M_z**2 + self.M_y**2)
-        self.theta_M = np.degrees(np.arctan2(self.M_z, self.M_y))
-        self.theta_M[self.theta_M<0] = 0
-        # self.theta_M[self.theta_M<0] += 360
-
+    
+    def plot(self):
         fig, axs = plt.subplots(ncols=2, nrows=4, figsize=(16, 8),layout="constrained")
 
         for ax in axs.flatten():
@@ -160,11 +128,117 @@ class Poutre:
 
         plt.show()
 
+        plt.figure(figsize=(10, 5))
+        plt.plot(self.x, self.T, label="T(x)", color='blue')
+        plt.axhline(0, color='gray', linewidth=1)
+        plt.axvline(0.35, color='gray', linewidth=1, linestyle='--')
+        plt.axvline(0.75, color='gray', linewidth=1, linestyle='--')
+        plt.xlabel(r"Position $x$ (m)")
+        plt.ylabel(r"Torsion (N$\cdot$m)")
+        plt.title("Torsion")
+        plt.legend()
+        plt.grid()
+
+        plt.show()
+
+    def solve(self, graph = False):
+        pos = self.supports[1] - self.supports[0]
+
+        # Forces en x
+        moment_z = 0
+
+        for l, F in self.z_forces.items():
+                moment_z += F * (l - self.supports[0])
+
+        for l, F in self.z_loads.items():
+                moment_z += F * ((l[0]+l[1])/2 - self.supports[0])
+
+        A_z = np.array([[1, 1], [0, pos]])
+        b_z = np.array([sum(self.z_forces.values()) + sum(self.z_loads.values()), moment_z])
+
+        self.supports_reaction_z = np.linalg.solve(A_z, b_z)
+
+        # self.max_V_z, self.max_M_z, M_z = self.shear_graph(self.supports_reaction_z, self.z_forces, graph)
+        self.V_z, self.M_y = self.shear_graph(self.supports_reaction_z, self.z_forces, self.z_loads)
+
+        # Forces en y
+        moment_y = 0
+
+        for l, F in self.y_forces.items():
+                moment_y += F * (l - self.supports[0])
+
+        for l, F in self.y_loads.items():
+                moment_y += F * ((l[0]+l[1])/2 - self.supports[0])
+
+        A_y = np.array([[1, 1], [0, pos]])
+        b_y = np.array([sum(self.y_forces.values()) + sum(self.y_loads.values()), moment_y])
+
+        self.supports_reaction_y = np.linalg.solve(A_y, b_y)
+
+        # self.max_V_y, self.max_M_y, M_y = self.shear_graph(self.supports_reaction_y, self.y_forces, graph)
+        self.V_y, self.M_z = self.shear_graph(self.supports_reaction_y, self.y_forces, self.y_loads)
+        # self.M_z = -self.M_z
+
+        self.V = np.sqrt(self.V_z**2 + self.V_y**2)
+        self.theta_V = np.degrees(np.arctan2(self.V_z, self.V_y))
+        self.V_max = np.max(self.V)
+        self.theta_V_max = self.theta_V[idx(self.V, self.V_max)]
+        # self.theta_V[self.theta_V<0] = 0
+        # self.theta_V[self.theta_V<0] += 360
+        self.M = np.sqrt(self.M_z**2 + self.M_y**2)
+        self.theta_M = np.degrees(np.arctan2(self.M_z, self.M_y))
+        self.M_max = np.max(self.M)
+        self.theta_M_max = self.theta_M[idx(self.M, self.M_max)]
+        # self.theta_M[self.theta_M<0] = 0
+        # self.theta_M[self.theta_M<0] += 360
+
         # Torsion
-        self.max_T = self.torsion_graph(self.torsion)
+        self.T = self.torsion_graph(self.torsion)
+
+        # sigma_z = self.M_z * self.d / 2 / self.I * 1e-6
+        # sigma_y = self.M_y * self.d / 2 / self.I * 1e-6
+        sigma_x = -self.M_z * self.d / 2 / self.I + self.M_y * self.d / 2 / self.I
+        sigma_x = -self.M_z * self.d / 2 / self.I + self.M_y * self.d / 2 / self.I
+        max_sigma_x = np.max(np.abs(sigma_x))
+        # tau = self.T * self.d / 2 / self.J * 1e-6
+        # tau_max = 3 * self.V / (2 * self.A) * 1e-6
+
+        y = z = np.linspace(-self.d/2, self.d/2, 200)
+
+        cisaillement = np.array([(1*4 * self.V_max / (3 * self.A) * (1 - (i * np.cos(np.deg2rad(self.theta_V_max)) + j * np.sin(np.deg2rad(self.theta_V_max)))**2 / (self.d / 2)**2) + 0*np.min(self.T) * np.sqrt(i**2 + j**2)/self.J)*1e-6
+                            if i**2 + j**2 <= (self.d / 2)**2 
+                            else 0 for i in y for j in z])
+
+        # contrainte = np.array([(-self.M_z[idx(sigma_x, max_sigma_x)]*i+self.M_y[idx(sigma_x, max_sigma_x)]*j)/self.I*1e-6
+                            # if i**2 + j**2 <= (self.d / 2)**2 
+                            # else 0 for i in y for j in z])
+
+        contrainte = np.array([self.M_max*(i * np.cos(np.deg2rad(self.theta_M_max)) + j * np.sin(np.deg2rad(self.theta_M_max)))/self.I*1e-6
+                            if i**2 + j**2 <= (self.d / 2)**2 
+                            else 0 for i in y for j in z])
+
+        Y, Z = np.meshgrid(y, z)
+        cisaillement = cisaillement.reshape(200, 200)
+        contrainte = contrainte.reshape(200, 200)
+
+        self.plot()
+
+        plt.figure(figsize=(10, 5))
+        plt.plot(self.x, sigma_x, label="σ(x)", color='blue')
+        plt.show()
+
+        plt.pcolor(Y, Z, cisaillement, cmap="copper")
+        plt.title(f"Contrainte de cisaillement à {self.x[idx(self.V,np.max(self.V))]:.3f} m {self.theta_V_max:.1f}°")
+        plt.colorbar()
+        plt.show()
+
+        plt.pcolor(Y, Z, contrainte, cmap="berlin")
+        plt.title(f"Contrainte normale à {self.x[idx(self.M, self.M_max)]:.3f} m ({self.theta_M_max:.1f})")
+        plt.colorbar()
+        plt.show()
 
         # return self.max_V_z, self.max_M_z, self.max_V_y, self.max_M_y, self.max_T
-        return np.max(self.V), np.max(self.M), np.max(self.max_T)
+        return (np.max(self.V), self.x[idx(self.V,np.max(self.V))]), (np.max(self.M), self.x[idx(self.M,np.max(self.M))]), (np.min(self.T), self.x[idx(self.T,np.min(self.T))])
 
 P = 8500
 rpm = 541
@@ -181,11 +255,11 @@ F_C = T/h_C
 
 rho = 7850
 
-P_poutre = 7850*np.pi*h_poutre**2*L_poutre
-P_B = 7850*np.pi*h_B**2*e_gear
-P_C = 7850*np.pi*h_C**2*e_gear
+P_poutre = 7850 * np.pi * h_poutre**2/4 * L_poutre * 9.81
+P_B = 7850 * np.pi * h_B**2 * e_gear * 9.81
+P_C = 7850 * np.pi * h_C**2 * e_gear * 9.81
 
-# print(P_B, P_C, P_poutre)
+print(P_B, P_C, P_poutre)
 # print(F_B, F_C)
 
 test = Poutre()
@@ -202,8 +276,15 @@ test.add_force(F_C, 0.35)
 # test.add_load(F_B, 0.75-e_gear/2, 0.75+e_gear/2, 90)
 # test.add_load(F_C, 0.35-e_gear/2, 0.35+e_gear/2)
 
-test.add_torsion(h_B*F_B, 0.2)
-test.add_torsion(-h_C*F_C, 0.6)
+test.add_torsion(h_B*F_B, 0.75)
+test.add_torsion(-h_C*F_C, 0.35)
 
-# test.solve(graph = True)
-print(test.solve(graph = True))
+# test.add_torsion_load(h_B*F_B, 0.75-e_gear/2, 0.75+e_gear/2)
+# test.add_torsion_load(-h_C*F_C, 0.35-e_gear/2, 0.35+e_gear/2)
+
+# print(test.solve(graph = True))
+
+V, M, T = test.solve(graph = True)
+print(f"V max = {V[0]:.3f} N à {V[1]:.3f} m")
+print(f"M max = {M[0]:.3f} N.m à {M[1]:.3f} m")
+print(f"T max = {T[0]:.3f} N.m à {T[1]:.3f} m")
