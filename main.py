@@ -177,7 +177,7 @@ class Poutre:
 
         # self.max_V_y, self.max_M_y, M_y = self.shear_graph(self.supports_reaction_y, self.y_forces, graph)
         self.V_y, self.M_z = self.shear_graph(self.supports_reaction_y, self.y_forces, self.y_loads)
-        # self.M_z = -self.M_z
+        self.M_z = -self.M_z
 
         self.V = np.sqrt(self.V_z**2 + self.V_y**2)
         self.theta_V = np.degrees(np.arctan2(self.V_y, self.V_z))
@@ -186,7 +186,7 @@ class Poutre:
         # self.theta_V[self.theta_V<0] = 0
         # self.theta_V[self.theta_V<0] += 360
         self.M = np.sqrt(self.M_z**2 + self.M_y**2)
-        self.theta_M = np.degrees(np.arctan2(self.M_y, self.M_z))
+        self.theta_M = np.degrees(np.arctan2(self.M_y, self.M_z)) - 180
         self.M_max = np.max(self.M)
         self.theta_M_max = self.theta_M[idx(self.M, self.M_max)]
         # self.theta_M[self.theta_M<0] = 0
@@ -195,49 +195,76 @@ class Poutre:
         # Torsion
         self.T = self.torsion_graph(self.torsion)
 
-        # sigma_z = self.M_z * self.d / 2 / self.I * 1e-6
-        # sigma_y = self.M_y * self.d / 2 / self.I * 1e-6
-        sigma_x = -self.M_z * self.d / 2 / self.I + self.M_y * self.d / 2 / self.I
-        sigma_x = -self.M_z * self.d / 2 / self.I + self.M_y * self.d / 2 / self.I
-        max_sigma_x = np.max(np.abs(sigma_x))
-        # tau = self.T * self.d / 2 / self.J * 1e-6
-        # tau_max = 3 * self.V / (2 * self.A) * 1e-6
 
+        # Graphiques autres
         y = z = np.linspace(-self.d/2, self.d/2, 200)
 
-        cisaillement = np.array([(1*4 * self.V_max / (3 * self.A) * (1 - (i * np.cos(np.deg2rad(self.theta_V_max)) + j * np.sin(np.deg2rad(self.theta_V_max)))**2 / (self.d / 2)**2) + 0*np.min(self.T) * np.sqrt(i**2 + j**2)/self.J)*1e-6
+        cisaillement = np.array([(1*4 * self.V_max / (3 * self.A) * (1 - (i * np.cos(np.deg2rad(self.theta_V_max)) + j * np.sin(np.deg2rad(self.theta_V_max)))**2 / (self.d / 2)**2) - np.min(self.T) * np.sqrt(i**2 + j**2)/self.J)*1e-6
                             if i**2 + j**2 <= (self.d / 2)**2 
                             else 0 for i in y for j in z])
+        
+        print("Cisaillement max : ", max(abs(cisaillement)))
 
         # contrainte = np.array([(-self.M_z[idx(sigma_x, max_sigma_x)]*i+self.M_y[idx(sigma_x, max_sigma_x)]*j)/self.I*1e-6
                             # if i**2 + j**2 <= (self.d / 2)**2 
                             # else 0 for i in y for j in z])
 
-        contrainte = np.array([self.M_max*(i * np.cos(np.deg2rad(self.theta_M_max)) + j * np.sin(np.deg2rad(self.theta_M_max)))/self.I*1e-6
+        contrainte = np.array([self.M_max*(-i * np.cos(np.deg2rad(self.theta_M_max)) + j * np.sin(np.deg2rad(self.theta_M_max)))/self.I*1e-6
                             if i**2 + j**2 <= (self.d / 2)**2 
-                            else 0 for i in y for j in z])
+                            else -5 for i in y for j in z])
+
+        contrainte_principale_1 = contrainte/2 + np.sqrt((contrainte/2)**2 + (cisaillement)**2)
+        contrainte_principale_2 = contrainte/2 - np.sqrt((contrainte/2)**2 + (cisaillement)**2)
 
         Y, Z = np.meshgrid(y, z)
         cisaillement = cisaillement.reshape(200, 200)
         contrainte = contrainte.reshape(200, 200)
+        contrainte_principale_1 = contrainte_principale_1.reshape(200, 200)
+        contrainte_principale_2 = contrainte_principale_2.reshape(200, 200)
+
+        index_max = np.where(contrainte_principale_1 == np.max(contrainte_principale_1))
+        index_max = (y[index_max[0][0]], z[index_max[1][0]])
+
+        print("Contrainte max : ", index_max)
+
+        print(np.max(contrainte))
+        print(np.max(contrainte_principale_1))
+        print(np.max(contrainte_principale_2))
 
         self.plot()
 
-        plt.figure(figsize=(10, 5))
-        plt.plot(self.x, sigma_x, label="σ(x)", color='blue')
-        plt.show()
+        # plt.figure(figsize=(10, 5))
+        # plt.plot(self.x, sigma_x, label="σ(x)", color='blue')
+        # plt.show()
 
         plt.pcolor(Y, Z, cisaillement, cmap="copper")
-        plt.title(f"Contrainte de cisaillement à {self.x[idx(self.V,np.max(self.V))]:.3f} m {self.theta_V_max:.1f}°")
+        # plt.title(f"Contrainte de cisaillement à {self.x[idx(self.V,np.max(self.V))]:.3f} m")
+        plt.xlabel("y (m)")
+        plt.ylabel("z (m)")
         plt.colorbar()
         plt.show()
 
         plt.pcolor(Y, Z, contrainte, cmap="berlin")
-        plt.title(f"Contrainte normale à {self.x[idx(self.M, self.M_max)]:.3f} m ({self.theta_M_max:.1f})")
+        # plt.title(f"Contrainte normale à {self.x[idx(self.M, self.M_max)]:.3f} m")
+        plt.xlabel("y (m)")
+        plt.ylabel("z (m)")
         plt.colorbar()
         plt.show()
 
-        # return self.max_V_z, self.max_M_z, self.max_V_y, self.max_M_y, self.max_T
+        plt.pcolor(Y, Z, contrainte_principale_1, cmap="copper")
+        # plt.title(f"Contrainte principale 1 à {self.x[idx(self.M, self.M_max)]:.3f} m")
+        plt.xlabel("y (m)")
+        plt.ylabel("z (m)")
+        plt.colorbar()
+        plt.show()
+
+        plt.pcolor(Y, Z, contrainte_principale_2, cmap="copper_r")
+        # plt.title(f"Contrainte principale 2 à {self.x[idx(self.M, self.M_max)]:.3f} m")
+        plt.xlabel("y (m)")
+        plt.ylabel("z (m)")
+        plt.colorbar()
+        plt.show()
+
         return (np.max(self.V), self.x[idx(self.V,np.max(self.V))]), (np.max(self.M), self.x[idx(self.M,np.max(self.M))]), (np.min(self.T), self.x[idx(self.T,np.min(self.T))])
 
 P = 8500
